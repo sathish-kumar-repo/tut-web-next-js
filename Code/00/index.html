@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Convert React.js Project to Next.js Project - Step by Step Tutorial
+    </title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        background: #f9f9f9;
+        color: #333;
+      }
+      header {
+        background: #0d47a1;
+        color: #fff;
+        padding: 20px;
+        text-align: center;
+      }
+      main {
+        max-width: 900px;
+        margin: auto;
+        padding: 20px;
+        background: #fff;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0d47a1;
+      }
+      pre {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+      code {
+        font-family: monospace;
+        color: #e67e22;
+      }
+      .step {
+        margin-bottom: 40px;
+      }
+      footer {
+        background: #0d47a1;
+        color: white;
+        text-align: center;
+        padding: 15px;
+        margin-top: 40px;
+      }
+      ul {
+        margin: 10px 0;
+        padding-left: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Convert React.js Project to Next.js Project</h1>
+      <p>A Complete Step-by-Step Tutorial</p>
+    </header>
+
+    <main>
+      <section class="step">
+        <h2>Introduction</h2>
+        <p>
+          React.js is a powerful library for building UI components, but when it
+          comes to
+          <strong>SEO, routing, and server-side rendering</strong>, Next.js
+          provides a more complete framework. In this tutorial, we’ll go step by
+          step on how to convert an existing React.js project into a Next.js
+          project.
+        </p>
+      </section>
+
+      <section class="step">
+        <h2>Step 1: Create a New Next.js Project</h2>
+        <p>First, install Next.js using the official CLI:</p>
+        <pre><code>npx create-next-app@latest my-next-app</code></pre>
+        <p>Navigate to the new project folder:</p>
+        <pre><code>cd my-next-app</code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 2: Understand the Folder Structure</h2>
+        <p>React apps typically look like this:</p>
+        <pre><code>
+my-react-app/
+  ├── public/
+  ├── src/
+      ├── components/
+      ├── App.js
+      ├── index.js
+      └── styles/
+      </code></pre>
+
+        <p>Next.js apps have this structure:</p>
+        <pre><code>
+my-next-app/
+  ├── public/
+  ├── pages/
+      ├── index.js
+      └── about.js
+  ├── components/
+  ├── styles/
+  └── next.config.js
+      </code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 3: Move Components</h2>
+        <p>
+          Copy everything inside your React <code>src/components</code> folder
+          into the <code>components</code> folder in your Next.js app.
+        </p>
+        <pre><code>
+cp -r ../my-react-app/src/components ./components
+      </code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 4: Move Assets</h2>
+        <p>
+          If you have images, icons, or static files in <code>public/</code>,
+          copy them into the <code>public/</code> folder in your Next.js app.
+        </p>
+      </section>
+
+      <section class="step">
+        <h2>Step 5: Setup Pages</h2>
+        <p>
+          In React, you typically use <code>react-router-dom</code> for routing.
+          In Next.js, each file inside <code>pages/</code> becomes a route.
+        </p>
+
+        <p>Example:</p>
+        <pre><code>
+// pages/index.js
+import React from "react";
+import Header from "../components/Header";
+
+export default function Home() {
+  return (
+    &lt;div&gt;
+      &lt;Header /&gt;
+      &lt;h1&gt;Welcome to Next.js!&lt;/h1&gt;
+    &lt;/div&gt;
+  );
+}
+      </code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 6: Remove React Router</h2>
+        <p>
+          Since Next.js has built-in routing, you don’t need
+          <code>react-router-dom</code>. Uninstall it:
+        </p>
+        <pre><code>npm uninstall react-router-dom</code></pre>
+
+        <p>Use Next.js <code>Link</code> instead:</p>
+        <pre><code>
+import Link from "next/link";
+
+export default function Navbar() {
+  return (
+    &lt;nav&gt;
+      &lt;Link href="/"&gt;Home&lt;/Link&gt;
+      &lt;Link href="/about"&gt;About&lt;/Link&gt;
+    &lt;/nav&gt;
+  );
+}
+      </code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 7: Convert index.js</h2>
+        <p>
+          In React, you have an <code>index.js</code> rendering the
+          <code>&lt;App /&gt;</code>. In Next.js, you don’t need it.
+        </p>
+        <p>
+          Instead, each page in <code>pages/</code> is automatically rendered.
+        </p>
+      </section>
+
+      <section class="step">
+        <h2>Step 8: Global Styles</h2>
+        <p>
+          Move your global CSS (like <code>App.css</code>) into
+          <code>styles/globals.css</code> and import it inside
+          <code>_app.js</code>.
+        </p>
+        <pre><code>
+// pages/_app.js
+import "../styles/globals.css";
+
+export default function MyApp({ Component, pageProps }) {
+  return &lt;Component {...pageProps} /&gt;;
+}
+      </code></pre>
+      </section>
+
+      <section class="step">
+        <h2>Step 9: Environment Variables</h2>
+        <p>Rename your <code>.env</code> variables:</p>
+        <ul>
+          <li>React: <code>REACT_APP_API_URL</code></li>
+          <li>Next.js: <code>NEXT_PUBLIC_API_URL</code></li>
+        </ul>
+      </section>
+
+      <section class="step">
+        <h2>Step 10: Run and Test</h2>
+        <p>Start your Next.js project:</p>
+        <pre><code>npm run dev</code></pre>
+        <p>
+          Open
+          <a href="http://localhost:3000" target="_blank"
+            >http://localhost:3000</a
+          >
+          in your browser.
+        </p>
+      </section>
+
+      <section class="step">
+        <h2>Conclusion</h2>
+        <p>
+          🎉 You’ve successfully migrated your React.js project to Next.js! Now
+          you can enjoy features like server-side rendering, static site
+          generation, built-in routing, and API routes without extra setup.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>Made with ❤️ - Next.js Migration Tutorial</p>
+    </footer>
+  </body>
+</html>
