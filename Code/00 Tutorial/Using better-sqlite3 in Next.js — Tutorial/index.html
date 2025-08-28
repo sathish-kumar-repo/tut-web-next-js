@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Using better-sqlite3 in Next.js — Tutorial</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        line-height: 1.6;
+        padding: 2rem;
+        max-width: 900px;
+        margin: auto;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0a66c2;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      code {
+        font-family: monospace;
+      }
+      .note {
+        background: #eef7ff;
+        padding: 0.7rem;
+        border-left: 4px solid #0a66c2;
+        margin: 1rem 0;
+      }
+      .important {
+        background: #fff2f2;
+        padding: 0.7rem;
+        border-left: 4px solid #ff5a5a;
+        margin: 1rem 0;
+      }
+      footer {
+        font-size: 0.9rem;
+        margin-top: 2rem;
+        border-top: 1px solid #eee;
+        padding-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Using better-sqlite3 in Next.js</h1>
+
+    <p>
+      <strong>better-sqlite3</strong> is a fast, synchronous SQLite library. In
+      Next.js, you can use it in <strong>server environments</strong> like API
+      routes, route handlers (<code>app/api</code>), and server components. You
+      must not import it into client-side components because it uses Node.js
+      native bindings that do not run in the browser.
+    </p>
+
+    <h2>1. Install dependencies</h2>
+    <pre><code>npm install better-sqlite3
+# if you use TypeScript
+npm install -D @types/better-sqlite3</code></pre>
+
+    <h2>2. Set up a database utility</h2>
+    <p>
+      Create a single shared database instance in <code>lib/db.ts</code> (or
+      <code>lib/db.js</code>).
+    </p>
+
+    <pre><code>// lib/db.ts
+import Database from 'better-sqlite3';
+import path from 'path';
+
+// store DB file in project root (persist between runs)
+const dbFile = path.join(process.cwd(), 'data.sqlite');
+const db = new Database(dbFile);
+
+// Example: ensure a table exists
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL
+  )
+`);
+
+export default db;</code></pre>
+
+    <p class="note">
+      By putting DB connection in <code>lib/db.ts</code> and importing it
+      elsewhere, you avoid multiple connections being created. In dev mode
+      Next.js hot reload may re-import modules, but better-sqlite3 is safe to
+      re-initialize since SQLite allows multiple connections in WAL mode.
+    </p>
+
+    <h2>3. Using in API routes (pages router)</h2>
+    <pre><code>// pages/api/users.ts
+import type { NextApiRequest, NextApiResponse } from 'next';
+import db from '../../lib/db';
+
+export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method === 'POST') {
+    const { name, email } = req.body;
+    try {
+      const stmt = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+      const result = stmt.run(name, email);
+      res.status(201).json({ id: result.lastInsertRowid, name, email });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  } else if (req.method === 'GET') {
+    const users = db.prepare('SELECT * FROM users').all();
+    res.status(200).json(users);
+  } else {
+    res.status(405).end();
+  }
+}</code></pre>
+
+    <h2>4. Using in Route Handlers (App Router)</h2>
+    <p>
+      With Next.js 13+ (App Router), create an API route at
+      <code>app/api/users/route.ts</code>:
+    </p>
+
+    <pre><code>// app/api/users/route.ts
+import { NextResponse } from 'next/server';
+import db from '@/lib/db';
+
+export async function GET() {
+  const users = db.prepare('SELECT * FROM users').all();
+  return NextResponse.json(users);
+}
+
+export async function POST(req: Request) {
+  const body = await req.json();
+  try {
+    const stmt = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+    const result = stmt.run(body.name, body.email);
+    return NextResponse.json({ id: result.lastInsertRowid, ...body });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+}</code></pre>
+
+    <h2>5. Server Components</h2>
+    <p>
+      You can query directly from a <strong>server component</strong> (not a
+      client component):
+    </p>
+
+    <pre><code>// app/users/page.tsx
+import db from '@/lib/db';
+
+export default function UsersPage() {
+  const users = db.prepare('SELECT * FROM users').all();
+  return (
+    &lt;div&gt;
+      &lt;h1&gt;Users&lt;/h1&gt;
+      &lt;ul&gt;
+        {users.map((u: any) =&gt; (
+          &lt;li key={u.id}&gt;{u.name} ({u.email})&lt;/li&gt;
+        ))}
+      &lt;/ul&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+
+    <p class="important">
+      ⚠️ Do not import <code>better-sqlite3</code> in
+      <strong>client components</strong>. It will throw runtime errors because
+      native modules cannot run in the browser.
+    </p>
+
+    <h2>6. Transactions</h2>
+    <p>You can use transactions the same way as in Node:</p>
+    <pre><code>const insertMany = db.transaction((users: {name:string;email:string}[]) =&gt; {
+  const stmt = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+  for (const u of users) stmt.run(u.name, u.email);
+});
+
+// usage inside API route or server component
+insertMany([{ name: 'Bob', email: 'bob@example.com' }, { name: 'Sue', email: 'sue@example.com' }]);</code></pre>
+
+    <h2>7. Database file location</h2>
+    <ul>
+      <li>
+        For dev: keep <code>data.sqlite</code> in project root (as shown above).
+      </li>
+      <li>
+        For production (e.g. Vercel, Netlify): these platforms often have
+        <em>ephemeral file systems</em>. The DB file will not persist across
+        deployments.
+      </li>
+      <li>
+        For persistent storage in production: host SQLite on a volume (Docker),
+        or switch to a hosted SQL database.
+      </li>
+    </ul>
+
+    <h2>8. TypeScript typing</h2>
+    <pre><code>import Database from 'better-sqlite3';
+type User = { id: number; name: string; email: string };
+
+const row = db.prepare&lt;[number], User&gt;('SELECT * FROM users WHERE id = ?').get(1);
+</code></pre>
+
+    <h2>9. Example project structure</h2>
+    <pre><code>my-next-app/
+  app/
+    api/
+      users/
+        route.ts
+    users/
+      page.tsx
+  lib/
+    db.ts
+  package.json
+  data.sqlite</code></pre>
+
+    <h2>10. Best practices in Next.js</h2>
+    <ul>
+      <li>
+        Keep DB access in <code>lib/db.ts</code> — single connection reuse.
+      </li>
+      <li>
+        Only import from server-side code: route handlers, API routes, server
+        components.
+      </li>
+      <li>
+        Do not run long queries on hot paths of SSR — consider streaming
+        (<code>stmt.iterate()</code>) or background jobs.
+      </li>
+      <li>
+        For production, be aware of hosting limits (SQLite is file-based).
+      </li>
+    </ul>
+
+    <footer>
+      <p>
+        Last updated: August 2025. This tutorial is adapted from better-sqlite3
+        official docs and applied to Next.js App Router patterns. See:
+        <a href="https://github.com/WiseLibs/better-sqlite3"
+          >better-sqlite3 repo</a
+        >
+        and <a href="https://nextjs.org/docs">Next.js docs</a> for details.
+      </p>
+    </footer>
+  </body>
+</html>

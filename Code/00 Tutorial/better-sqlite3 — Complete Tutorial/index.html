@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>better-sqlite3 — Complete Tutorial</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+        line-height: 1.6;
+        padding: 2rem;
+        max-width: 1000px;
+        margin: auto;
+        color: #111;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #1a73e8;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono",
+          "Courier New", monospace;
+      }
+      .note {
+        background: #fff8c6;
+        padding: 0.6rem;
+        border-left: 4px solid #ffd54a;
+        margin: 1rem 0;
+      }
+      .important {
+        background: #ffe8e8;
+        padding: 0.6rem;
+        border-left: 4px solid #ff6b6b;
+        margin: 1rem 0;
+      }
+      footer {
+        font-size: 0.9rem;
+        color: #555;
+        margin-top: 2rem;
+        border-top: 1px solid #eee;
+        padding-top: 1rem;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 1rem 0;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+      }
+      a {
+        color: #1a73e8;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>better-sqlite3 — Complete Tutorial</h1>
+    <p>
+      <strong>better-sqlite3</strong> is a fast, synchronous SQLite library for
+      Node.js. It exposes an ergonomic API for prepared statements,
+      transactions, pragmas, backups, and more — designed for high performance
+      and safety. This tutorial walks through installation, common patterns,
+      advanced features and best practices.
+    </p>
+
+    <p class="note">
+      <strong>Sources:</strong> official repository & docs, npm package, and
+      community docs. Key APIs and claims are implemented and described in the
+      official project documentation. :contentReference[oaicite:0]{index=0}
+    </p>
+
+    <h2>Table of Contents</h2>
+    <ol>
+      <li>Installation</li>
+      <li>Quick start & basic usage</li>
+      <li>Prepared statements (prepare, run, get, all, iterate)</li>
+      <li>Transactions (transaction wrapper)</li>
+      <li>Executing SQL and PRAGMA</li>
+      <li>Backup and checkpoint</li>
+      <li>Handling concurrency & Worker Threads</li>
+      <li>TypeScript usage</li>
+      <li>Electron & native module considerations</li>
+      <li>Performance tips & best practices</li>
+      <li>Troubleshooting & error handling</li>
+      <li>Reference links</li>
+    </ol>
+
+    <h2 id="installation">1. Installation</h2>
+    <p>Install with npm / yarn / pnpm:</p>
+    <pre><code>npm install better-sqlite3
+# yarn add better-sqlite3
+# pnpm add better-sqlite3</code></pre>
+
+    <p class="note">
+      Because <code>better-sqlite3</code> uses native bindings, installation may
+      compile native code on some platforms. If installation fails, ensure build
+      tools (C/C++ toolchain, Python where required) are available.
+      :contentReference[oaicite:1]{index=1}
+    </p>
+
+    <h2 id="quickstart">2. Quick start & basic usage</h2>
+    <p>Open (or create) a database and run simple SQL:</p>
+    <pre><code>// CommonJS
+const Database = require('better-sqlite3');
+const db = new Database('example.db'); // opens or creates example.db
+
+// Create a table
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL
+  )
+`);
+
+// Insert a row and query it
+const insert = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+const info = insert.run('Alice', 'alice@example.com'); // returns a RunResult
+console.log('Inserted row id:', info.lastInsertRowid);
+
+const row = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+console.log(row);</code></pre>
+
+    <p>
+      Important: <code>better-sqlite3</code> is synchronous. That makes code
+      simple and very fast for many workloads, but you should avoid blocking the
+      main event loop with extremely long-running queries on UI threads.
+      :contentReference[oaicite:2]{index=2}
+    </p>
+
+    <h2 id="prepared">3. Prepared statements</h2>
+    <p>
+      The core method is <code>db.prepare(sql)</code>, which returns a
+      <code>Statement</code> with methods:
+    </p>
+    <ul>
+      <li>
+        <code>stmt.run(...params)</code> — execute for changes; returns info
+        including <code>changes</code> and <code>lastInsertRowid</code>.
+      </li>
+      <li>
+        <code>stmt.get(...params)</code> — return first row or
+        <code>undefined</code>.
+      </li>
+      <li>
+        <code>stmt.all(...params)</code> — return all matching rows as an array.
+      </li>
+      <li>
+        <code>stmt.iterate(...params)</code> — return an iterator (generator) to
+        stream large results.
+      </li>
+      <li>
+        <code>stmt.pluck(true)</code>, <code>stmt.columns()</code>, etc. —
+        helpful helpers.
+      </li>
+    </ul>
+
+    <pre><code>const stmt = db.prepare('SELECT id, name FROM users WHERE email = ?');
+const user = stmt.get('alice@example.com'); // single row
+const many = db.prepare('SELECT * FROM users WHERE name LIKE ?').all('%A%'); // array
+
+// iterate (memory efficient)
+for (const r of db.prepare('SELECT * FROM users').iterate()) {
+  console.log(r);
+}</code></pre>
+
+    <p class="note">
+      Using prepared statements repeatedly is faster than building new SQL
+      strings each time, and it helps prevent SQL injection when using parameter
+      binding.
+    </p>
+
+    <h2 id="transactions">4. Transactions</h2>
+    <p>
+      <code>better-sqlite3</code> provides a convenient
+      <code>db.transaction(fn)</code> helper which turns a function into a
+      single atomic transaction. It uses SQLite transactions under the hood and
+      rolls back automatically when an error is thrown inside the function. This
+      makes multi-statement transactions simple and safe.
+      :contentReference[oaicite:3]{index=3}
+    </p>
+
+    <pre><code>// A simple transactional batch
+const insertMany = db.transaction((users) => {
+  const stmt = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+  for (const u of users) stmt.run(u.name, u.email);
+});
+
+// Use:
+try {
+  insertMany([
+    {name:'Bob', email:'bob@example.com'},
+    {name:'Carla', email:'carla@example.com'}
+  ]);
+} catch (err) {
+  console.error('Transaction failed:', err);
+}</code></pre>
+
+    <p class="important">
+      Transactions created with <code>db.transaction</code> are synchronous
+      functions — they must complete quickly to avoid blocking. For heavy
+      operations, consider running them in worker threads or separate processes.
+      :contentReference[oaicite:4]{index=4}
+    </p>
+
+    <h2 id="exec-pragma">5. Executing SQL, PRAGMA and utility methods</h2>
+    <p>
+      <code>db.exec(sql)</code> runs SQL statements that return no rows (e.g.
+      DDL). To run single-statement commands use <code>prepare()</code> and
+      <code>.run()</code> or the convenience methods below:
+    </p>
+
+    <pre><code>// Run a multi-statement SQL string
+db.exec('BEGIN; UPDATE accounts SET balance = balance - 100 WHERE id = 1; UPDATE accounts SET balance = balance + 100 WHERE id = 2; COMMIT;')
+
+// PRAGMA example
+const pageSize = db.pragma('page_size', { simple: true }); // read-only
+db.pragma('journal_mode = WAL'); // set WAL journal mode</code></pre>
+
+    <p>
+      Use <code>db.pragma(name)</code> to query and set SQLite pragmas. For
+      authoritative list of PRAGMA options, consult the official SQLite docs.
+      :contentReference[oaicite:5]{index=5}
+    </p>
+
+    <h2 id="backup">6. Backup and checkpoint</h2>
+    <p>
+      <strong>Backup</strong>: better-sqlite3 provides a
+      <code>db.backup(destination)</code> method to safely copy the database to
+      a file while the database remains open. This is preferable to copying
+      files at the filesystem level while the DB is open.
+      :contentReference[oaicite:6]{index=6}
+    </p>
+
+    <pre><code>async function makeBackup() {
+  // returns a Promise
+  await db.backup('./backup/my-backup.db', {
+    // optional: progress callback, step size, etc.
+    progress({ totalPages, remainingPages }) {
+      console.log('backup progress', totalPages - remainingPages, '/', totalPages);
+    }
+  });
+  console.log('Backup finished');
+}</code></pre>
+
+    <p>
+      <strong>Checkpoint</strong>: If you use WAL mode (<code
+        >PRAGMA journal_mode=WAL</code
+      >), you may want to call a checkpoint periodically. better-sqlite3 exposes
+      a <code>db.checkpoint()</code> helper.
+      :contentReference[oaicite:7]{index=7}
+    </p>
+
+    <h2 id="concurrency">7. Concurrency & Worker Threads</h2>
+    <p>
+      Because the API is synchronous, using <code>better-sqlite3</code> on
+      Node.js main event loop for heavy queries can block your app. Typical
+      strategies:
+    </p>
+    <ul>
+      <li>
+        Run long queries/exports in a <strong>worker thread</strong> or child
+        process.
+      </li>
+      <li>
+        Open separate connections from separate threads when needed; SQLite
+        supports multi-connection access with proper locking or WAL mode.
+      </li>
+      <li>
+        Use <code>db.backup()</code> and checkpoints when sharing DB across
+        processes.
+      </li>
+    </ul>
+    <p class="note">
+      The author recommends using separate processes/threads for heavy DB tasks
+      to avoid freezing the event loop. :contentReference[oaicite:8]{index=8}
+    </p>
+
+    <h2 id="typescript">8. TypeScript usage</h2>
+    <p>
+      Type declarations are available via <code>@types/better-sqlite3</code> or
+      the package may include types depending on version. Install types if you
+      want strong typing:
+    </p>
+    <pre><code>npm i -D @types/better-sqlite3
+# or if package includes types, you won't need the above</code></pre>
+
+    <pre><code>import Database from 'better-sqlite3';
+const db = new Database('example.db');
+
+const row: { id: number; name: string } | undefined = db.prepare('SELECT id, name FROM users WHERE id = ?').get(1);</code></pre>
+
+    <p class="note">
+      Type definitions may lag behind the latest runtime API; check the
+      DefinitelyTyped or package docs for version-specific typings.
+      :contentReference[oaicite:9]{index=9}
+    </p>
+
+    <h2 id="electron">9. Electron & native modules</h2>
+    <p>
+      If you plan to use <code>better-sqlite3</code> inside an Electron app, be
+      cautious: it is a native module and must be built for the target Electron
+      version and architecture. Many developers prefer to run DB work in a
+      separate process or use a prebuilt binary packaging strategy. The project
+      README and Electron packaging docs contain guidance.
+      :contentReference[oaicite:10]{index=10}
+    </p>
+
+    <h2 id="perf">10. Performance tips & best practices</h2>
+    <ul>
+      <li>
+        <strong>Reuse prepared statements</strong> — avoid reparsing SQL
+        repeatedly.
+      </li>
+      <li>
+        <strong>Use transactions</strong> (wrap many inserts in a transaction)
+        for bulk operations — massive speedups vs individual commits.
+      </li>
+      <li>
+        <strong>Use <code>.iterate()</code></strong> for streaming large query
+        results rather than loading all rows via <code>.all()</code>.
+      </li>
+      <li>
+        <strong>Enable WAL</strong> for better concurrency if you have multiple
+        readers and writers: <code>db.pragma('journal_mode = WAL')</code>.
+      </li>
+      <li>
+        <strong>Adjust cache size</strong> and page size with pragmas when
+        necessary: <code>db.pragma('cache_size = -2000')</code> (negative sets
+        KB units).
+      </li>
+    </ul>
+    <p class="note">
+      These performance patterns are drawn from SQLite best practices and
+      better-sqlite3 docs. For a deep dive into SQLite tuning options, consult
+      SQLite PRAGMA docs. :contentReference[oaicite:11]{index=11}
+    </p>
+
+    <h2 id="troubleshoot">11. Troubleshooting & error handling</h2>
+    <p>Common issues and solutions:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Symptom</th>
+          <th>Fix</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Install fails on Windows/macOS/Linux</td>
+          <td>
+            Install build tools (Visual Studio Build Tools on Windows, Xcode CLI
+            on macOS, build-essential on Linux) or use prebuilt binaries if
+            available. See repo issues for platform-specific tips.
+            :contentReference[oaicite:12]{index=12}
+          </td>
+        </tr>
+        <tr>
+          <td>DB locked errors</td>
+          <td>
+            Use WAL mode or ensure you aren't holding long-running transactions;
+            keep transactions short; use separate connections for major
+            background jobs. :contentReference[oaicite:13]{index=13}
+          </td>
+        </tr>
+        <tr>
+          <td>Blocking UI / event loop</td>
+          <td>
+            Move heavy DB work to a worker thread or child process. Do not run
+            heavy synchronous queries on the main thread.
+            :contentReference[oaicite:14]{index=14}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 id="advanced">12. Advanced examples</h2>
+
+    <h3>Batch insert with prepared statement + transaction</h3>
+    <pre><code>const insertUsers = db.prepare('INSERT INTO users (name, email) VALUES (?, ?)');
+const insertMany = db.transaction((users) => {
+  for (const u of users) insertUsers.run(u.name, u.email);
+});
+
+insertMany([{name:'A',email:'a@x'}, {name:'B',email:'b@x'}]);</code></pre>
+
+    <h3>Streaming large query with <code>iterate()</code></h3>
+    <pre><code>for (const row of db.prepare('SELECT * FROM big_table').iterate()) {
+  // handle row — memory efficient
+}</code></pre>
+
+    <h3>Using user-defined functions</h3>
+    <pre><code>// add a simple SQL function
+db.function('reverse', { deterministic: true }, (s) => String(s).split('').reverse().join(''));
+console.log(db.prepare('SELECT reverse(?) as r').get('abc').r); // 'cba'</code></pre>
+
+    <h3>Safe backup (async)</h3>
+    <pre><code>async function backupNow() {
+  await db.backup('./backup.db', {
+    progress({totalPages, remainingPages}) {
+      console.log('progress', totalPages - remainingPages, '/', totalPages);
+    }
+  });
+  console.log('Backup complete');
+}</code></pre>
+
+    <h2 id="references">13. References</h2>
+    <ul>
+      <li>
+        <a href="https://github.com/WiseLibs/better-sqlite3"
+          >better-sqlite3 GitHub repository (official)</a
+        >. Primary source for API and docs.
+        :contentReference[oaicite:15]{index=15}
+      </li>
+      <li>
+        <a
+          href="https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md"
+          >better-sqlite3 API docs (statements, transaction helpers, backup)</a
+        >. :contentReference[oaicite:16]{index=16}
+      </li>
+      <li>
+        <a href="https://www.npmjs.com/package/better-sqlite3"
+          >npm package page</a
+        >
+        (installation, versions, basic README).
+        :contentReference[oaicite:17]{index=17}
+      </li>
+      <li>
+        <a href="https://www.sqlite.org/docs.html"
+          >SQLite Documentation (PRAGMA and tuning)</a
+        >. :contentReference[oaicite:18]{index=18}
+      </li>
+      <li>
+        Community guides and examples (w3resource, blog posts) for practical
+        examples and patterns. :contentReference[oaicite:19]{index=19}
+      </li>
+    </ul>
+
+    <footer>
+      <p>
+        Last checked: August 28, 2025. This tutorial summarizes the official API
+        and best practices; consult the upstream docs for the latest API changes
+        and version-specific details. Key claims and API references were
+        verified against the project's README and API docs.
+        :contentReference[oaicite:20]{index=20}
+      </p>
+    </footer>
+  </body>
+</html>

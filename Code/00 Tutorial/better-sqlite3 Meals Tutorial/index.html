@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>better-sqlite3 Meals Tutorial</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        line-height: 1.6;
+        padding: 2rem;
+        max-width: 900px;
+        margin: auto;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0a66c2;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      code {
+        font-family: monospace;
+      }
+      .note {
+        background: #eef7ff;
+        padding: 0.7rem;
+        border-left: 4px solid #0a66c2;
+        margin: 1rem 0;
+      }
+      .important {
+        background: #fff2f2;
+        padding: 0.7rem;
+        border-left: 4px solid #ff5a5a;
+        margin: 1rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>better-sqlite3: Meals Database Tutorial</h1>
+
+    <p>
+      This tutorial demonstrates using <code>better-sqlite3</code> to create a
+      simple <strong>meals</strong> database, populate it with dummy data, and
+      query it in Node.js. You will learn how to:
+    </p>
+    <ul>
+      <li>Create a SQLite database with <code>better-sqlite3</code></li>
+      <li>Create a table for meals</li>
+      <li>Insert multiple dummy meals</li>
+      <li>Query meals</li>
+      <li>Use it safely in a Next.js project</li>
+    </ul>
+
+    <h2>1. Install better-sqlite3</h2>
+    <pre><code>npm install better-sqlite3</code></pre>
+
+    <h2>2. Import and open database</h2>
+    <pre><code>const sql = require('better-sqlite3');
+const db = sql('meals.db');</code></pre>
+
+    <h2>3. Create the meals table</h2>
+    <pre><code>db.prepare(`
+  CREATE TABLE IF NOT EXISTS meals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL UNIQUE,
+      title TEXT NOT NULL,
+      image TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      instructions TEXT NOT NULL,
+      creator TEXT NOT NULL,
+      creator_email TEXT NOT NULL
+  )
+`).run();</code></pre>
+
+    <h2>4. Prepare dummy meals data</h2>
+    <p>We have an array of objects representing different meals:</p>
+    <pre><code>const dummyMeals = [
+  { title: 'Juicy Cheese Burger', slug: 'juicy-cheese-burger', image: '/images/burger.jpg', summary: 'A mouth-watering burger...', instructions: 'Step by step instructions...', creator: 'John Doe', creator_email: 'johndoe@example.com' },
+  { title: 'Spicy Curry', slug: 'spicy-curry', image: '/images/curry.jpg', summary: 'A rich and spicy curry...', instructions: 'Step by step instructions...', creator: 'Max Schwarz', creator_email: 'max@example.com' },
+  // ... add the rest of the meals as in your dummyMeals array
+];</code></pre>
+
+    <h2>5. Insert dummy data</h2>
+    <p>Use a prepared statement for safe insertion:</p>
+    <pre><code>const stmt = db.prepare(`
+  INSERT INTO meals VALUES (
+      null,
+      @slug,
+      @title,
+      @image,
+      @summary,
+      @instructions,
+      @creator,
+      @creator_email
+  )
+`);
+
+function initData() {
+  for (const meal of dummyMeals) {
+    try {
+      stmt.run(meal);
+    } catch (err) {
+      console.log('Skipping duplicate:', meal.slug);
+    }
+  }
+}
+
+initData();</code></pre>
+
+    <div class="note">
+      <strong>Note:</strong> Using <code>@property</code> syntax in the prepared
+      statement allows binding object properties safely to avoid SQL injection.
+    </div>
+
+    <h2>6. Query meals</h2>
+    <pre><code>// Get all meals
+const meals = db.prepare('SELECT * FROM meals').all();
+console.log(meals);
+
+// Get a single meal by slug
+const burger = db.prepare('SELECT * FROM meals WHERE slug = ?').get('juicy-cheese-burger');
+console.log(burger);</code></pre>
+
+    <h2>7. Using better-sqlite3 in Next.js</h2>
+    <p>In Next.js, you can use it only in server-side code:</p>
+    <pre><code>// lib/db.js
+const Database = require('better-sqlite3');
+const db = new Database('meals.db');
+module.exports = db;
+
+// app/api/meals/route.js (App Router)
+import db from '@/lib/db';
+
+export async function GET() {
+  const meals = db.prepare('SELECT * FROM meals').all();
+  return new Response(JSON.stringify(meals), { status: 200 });
+}</code></pre>
+
+    <div class="important">
+      ⚠️ <strong>Important:</strong> Do NOT import
+      <code>better-sqlite3</code> in client-side React components. It only works
+      on the server.
+    </div>
+
+    <h2>8. Bonus: Insert meals in a transaction</h2>
+    <pre><code>const insertMany = db.transaction((mealsArray) =&gt; {
+  for (const meal of mealsArray) {
+    stmt.run(meal);
+  }
+});
+
+insertMany(dummyMeals);</code></pre>
+
+    <h2>9. Next steps</h2>
+    <ul>
+      <li>Add routes to get meals by ID, slug, or creator.</li>
+      <li>Build a simple frontend page listing meals.</li>
+      <li>Explore <code>stmt.iterate()</code> for large datasets.</li>
+      <li>
+        Use WAL mode for concurrent reads/writes if needed:
+        <code>db.pragma('journal_mode = WAL')</code>
+      </li>
+    </ul>
+
+    <footer>
+      <p>
+        Last updated: August 2025. Tutorial based on
+        <a href="https://github.com/WiseLibs/better-sqlite3">better-sqlite3</a>
+        documentation.
+      </p>
+    </footer>
+  </body>
+</html>

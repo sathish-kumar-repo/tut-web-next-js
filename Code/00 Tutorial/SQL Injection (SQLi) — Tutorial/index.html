@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SQL Injection Tutorial (Safe)</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        line-height: 1.6;
+        padding: 2rem;
+        max-width: 900px;
+        margin: auto;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #b22222;
+      }
+      pre {
+        background: #f6f8fa;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow: auto;
+      }
+      code {
+        font-family: monospace;
+      }
+      .note {
+        background: #eef7ff;
+        padding: 0.7rem;
+        border-left: 4px solid #0a66c2;
+        margin: 1rem 0;
+      }
+      .important {
+        background: #fff2f2;
+        padding: 0.7rem;
+        border-left: 4px solid #ff5a5a;
+        margin: 1rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SQL Injection (SQLi) — Tutorial</h1>
+
+    <p>
+      <strong>SQL Injection</strong> is one of the most common and dangerous
+      security vulnerabilities in web applications. It happens when untrusted
+      input is concatenated directly into SQL queries, allowing attackers to
+      manipulate the query and access or destroy sensitive data.
+    </p>
+
+    <div class="important">
+      ⚠️ This tutorial is for
+      <strong>educational and defensive purposes only</strong>. Never use SQL
+      injection techniques on systems you do not own or have permission to test.
+    </div>
+
+    <h2>1. What is SQL Injection?</h2>
+    <p>
+      SQL Injection occurs when an application accepts user input and directly
+      interpolates it into a SQL query. Without proper sanitization or
+      parameterization, attackers can modify the query logic.
+    </p>
+
+    <h2>2. Example of unsafe code</h2>
+    <pre><code>// ❌ Vulnerable JavaScript code
+const userInput = req.query.username;
+const query = `SELECT * FROM users WHERE username = '${userInput}'`;
+const result = db.prepare(query).all();</code></pre>
+
+    <p>
+      In this example, user input is inserted directly into the SQL statement.
+      An attacker could manipulate the <code>username</code> parameter to access
+      unintended rows.
+    </p>
+
+    <h2>3. Safe approach with parameterized queries</h2>
+    <p>
+      The correct way is to use
+      <strong>prepared statements with bound parameters</strong>. Libraries like
+      <code>better-sqlite3</code>, <code>pg</code> (PostgreSQL), or
+      <code>mysql2</code> all support this.
+    </p>
+
+    <pre><code>// ✅ Safe version with better-sqlite3
+const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+const result = stmt.all(userInput);</code></pre>
+
+    <p>
+      Here, the input is passed as a parameter (<code>?</code>) to the query.
+      The database driver handles escaping and ensures it cannot alter the query
+      structure.
+    </p>
+
+    <h2>4. Real-world risks of SQL Injection</h2>
+    <ul>
+      <li>Bypassing authentication (logging in without valid credentials)</li>
+      <li>
+        Extracting sensitive information (emails, passwords, financial data)
+      </li>
+      <li>Altering or deleting database records</li>
+      <li>In some cases, executing system commands via the database</li>
+    </ul>
+
+    <h2>5. How to prevent SQL Injection</h2>
+    <ol>
+      <li>
+        <strong>Always use prepared statements</strong> with placeholders (e.g.,
+        <code>?</code>, <code>$1</code>).
+      </li>
+      <li>
+        <strong>Never concatenate user input</strong> directly into SQL strings.
+      </li>
+      <li>
+        <strong>Use ORM/Query Builders</strong> (e.g., Prisma, Sequelize,
+        Knex.js) that parameterize queries by default.
+      </li>
+      <li>
+        <strong>Apply least privilege principle</strong> — application DB users
+        should have minimal permissions.
+      </li>
+      <li>
+        <strong>Validate and sanitize input</strong> (length, type, format)
+        before using it.
+      </li>
+      <li>
+        <strong>Enable database logging & monitoring</strong> to detect
+        suspicious queries.
+      </li>
+    </ol>
+
+    <h2>6. Example in Next.js API Route (safe)</h2>
+    <pre><code>// app/api/user/route.js
+import db from '@/lib/db';
+
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const username = searchParams.get('username');
+
+  const stmt = db.prepare('SELECT * FROM users WHERE username = ?');
+  const user = stmt.get(username);
+
+  return new Response(JSON.stringify(user), { status: 200 });
+}</code></pre>
+
+    <h2>7. Testing for SQL Injection (safely)</h2>
+    <p>When auditing your own apps:</p>
+    <ul>
+      <li>Check every query that uses user input.</li>
+      <li>Verify parameter binding is used consistently.</li>
+      <li>
+        Use tools like
+        <a href="https://owasp.org/www-project-zap/">OWASP ZAP</a> or
+        <a href="https://portswigger.net/burp">Burp Suite</a> in authorized
+        penetration tests.
+      </li>
+    </ul>
+
+    <h2>8. Resources</h2>
+    <ul>
+      <li>
+        <a href="https://owasp.org/Top10/A03_2021-Injection/"
+          >OWASP Top 10: Injection</a
+        >
+      </li>
+      <li>
+        <a
+          href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html"
+          >SQL Injection Prevention Cheat Sheet (OWASP)</a
+        >
+      </li>
+      <li>
+        <a href="https://github.com/WiseLibs/better-sqlite3"
+          >better-sqlite3 documentation</a
+        >
+      </li>
+    </ul>
+
+    <footer>
+      <p>
+        Last updated: August 2025 — Written for developers learning to prevent
+        SQL Injection vulnerabilities.
+      </p>
+    </footer>
+  </body>
+</html>
