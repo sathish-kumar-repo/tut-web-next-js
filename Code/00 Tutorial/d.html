@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <form id="myForm" action="/submit" method="POST">
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required />
+
+      <button id="button" type="submit">Submit</button>
+    </form>
+  </body>
+  <script>
+    // Correct: listen for "submit" on the form
+    document.querySelector("#myForm").addEventListener("submit", (e) => {
+      e.preventDefault(); // Stops the form from submitting
+
+      // Example: log the values
+      const name = document.querySelector("#name").value;
+      const email = document.querySelector("#email").value;
+
+      console.log("Form submitted!", { name, email });
+    });
+  </script>
+</html>

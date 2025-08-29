@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tutorial: Built-in Browser Form Handling Feature</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 20px;
+        background: #f9f9f9;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #2c3e50;
+      }
+      pre {
+        background: #272822;
+        color: #f8f8f2;
+        padding: 10px;
+        border-radius: 5px;
+        overflow-x: auto;
+      }
+      code {
+        color: #e67e22;
+        font-weight: bold;
+      }
+      section {
+        background: #fff;
+        margin-bottom: 20px;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      form {
+        margin-top: 15px;
+      }
+      input,
+      select,
+      button,
+      textarea {
+        padding: 8px;
+        margin: 5px 0;
+        width: 100%;
+        max-width: 400px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background: #2ecc71;
+        color: white;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #27ae60;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📘 Tutorial: Built-in Browser Form Handling Feature</h1>
+
+    <section>
+      <h2>1. Introduction</h2>
+      <p>
+        Web browsers come with built-in features to handle forms without
+        requiring JavaScript. These features include:
+      </p>
+      <ul>
+        <li>
+          Automatic form submission with <code>action</code> and
+          <code>method</code>
+        </li>
+        <li>
+          Built-in validation using <code>required</code>, <code>type</code>,
+          <code>pattern</code>
+        </li>
+        <li>
+          Default input controls like <code>text</code>, <code>email</code>,
+          <code>password</code>, <code>number</code>
+        </li>
+        <li>Accessibility and mobile-friendly input types</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>2. Basic Form Structure</h2>
+      <pre><code>&lt;form action="/submit" method="POST"&gt;
+  &lt;label for="name"&gt;Name:&lt;/label&gt;
+  &lt;input type="text" id="name" name="name" required&gt;
+
+  &lt;label for="email"&gt;Email:&lt;/label&gt;
+  &lt;input type="email" id="email" name="email" required&gt;
+
+  &lt;button type="submit"&gt;Submit&lt;/button&gt;
+&lt;/form&gt;</code></pre>
+
+      <p>✅ Try it below:</p>
+      <form action="#" method="POST">
+        <label for="name">Name:</label>
+        <input type="text" id="name" name="name" required />
+
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required />
+
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>3. Input Types and Validation</h2>
+      <p>
+        Browsers validate form inputs automatically based on the
+        <code>type</code> attribute.
+      </p>
+      <ul>
+        <li><code>type="email"</code> → Must be a valid email</li>
+        <li><code>type="number"</code> → Accepts only numbers</li>
+        <li><code>type="url"</code> → Must be a valid URL</li>
+        <li><code>type="password"</code> → Hidden input</li>
+        <li><code>required</code> → Field cannot be empty</li>
+        <li><code>pattern</code> → Custom regex validation</li>
+      </ul>
+
+      <pre><code>&lt;input type="number" min="18" max="99" required&gt;
+&lt;input type="url" required&gt;
+&lt;input type="text" pattern="[A-Za-z]{3,}" title="At least 3 letters"&gt;</code></pre>
+
+      <p>✅ Demo:</p>
+      <form action="#">
+        <input
+          type="number"
+          placeholder="Age (18-99)"
+          min="18"
+          max="99"
+          required
+        />
+        <input type="url" placeholder="Enter a URL" required />
+        <input
+          type="text"
+          placeholder="Only letters, min 3"
+          pattern="[A-Za-z]{3,}"
+          title="At least 3 letters"
+        />
+        <button type="submit">Validate</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>4. Autofill, Autocomplete & Placeholders</h2>
+      <p>Browsers can autofill inputs when using <code>autocomplete</code>.</p>
+      <pre><code>&lt;input type="text" name="username" autocomplete="username" placeholder="Enter your username"&gt;
+&lt;input type="password" name="password" autocomplete="current-password" placeholder="Enter password"&gt;</code></pre>
+
+      <form action="#">
+        <input
+          type="text"
+          name="username"
+          autocomplete="username"
+          placeholder="Enter your username"
+        />
+        <input
+          type="password"
+          name="password"
+          autocomplete="current-password"
+          placeholder="Enter password"
+        />
+        <button type="submit">Login</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>5. Select, Radio, Checkbox</h2>
+      <pre><code>&lt;select name="country" required&gt;
+  &lt;option value="" disabled selected&gt;Choose country&lt;/option&gt;
+  &lt;option value="us"&gt;USA&lt;/option&gt;
+  &lt;option value="in"&gt;India&lt;/option&gt;
+&lt;/select&gt;
+
+&lt;input type="radio" name="gender" value="male" required&gt; Male
+&lt;input type="radio" name="gender" value="female"&gt; Female
+
+&lt;input type="checkbox" name="terms" required&gt; Accept Terms</code></pre>
+
+      <form action="#">
+        <select name="country" required>
+          <option value="" disabled selected>Choose country</option>
+          <option value="us">USA</option>
+          <option value="in">India</option>
+        </select>
+
+        <p>Gender:</p>
+        <input type="radio" name="gender" value="male" required /> Male
+        <input type="radio" name="gender" value="female" /> Female
+
+        <p><input type="checkbox" name="terms" required /> Accept Terms</p>
+
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>6. Built-in Error Messages</h2>
+      <p>Browsers automatically show error messages if validation fails:</p>
+      <form action="#">
+        <input type="email" placeholder="Enter email" required />
+        <input
+          type="password"
+          placeholder="Enter password (min 6)"
+          minlength="6"
+          required
+        />
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>7. Conclusion</h2>
+      <p>
+        With these built-in form handling features, you can create powerful
+        forms without JavaScript. Browser validation, error messages, and
+        mobile-friendly input types make forms more user-friendly and
+        accessible.
+      </p>
+    </section>
+  </body>
+</html>
